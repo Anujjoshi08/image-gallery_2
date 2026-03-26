@@ -2,13 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { FixedSizeGrid as Grid } from "react-window";
 import PreviewModal from "./PreviewModal";
 import ImageCard from "./ImageCard";
+import { getImages, saveImages } from "../utils/indexedDB"; // ✅ NEW
 
 export default function Gallery() {
+
   const [images, setImages] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [selected, setSelected] = useState([]);
   const [isDownloadingSelected, setIsDownloadingSelected] = useState(false);
   const [gridWidth, setGridWidth] = useState(0);
+
+  const [source, setSource] = useState("network"); // ✅ NEW (cache indicator)
+
   const gridContainerRef = useRef(null);
 
   const COLUMN_COUNT = gridWidth < 640 ? 1 : gridWidth < 1024 ? 2 : 3;
@@ -16,14 +21,36 @@ export default function Gallery() {
   const CARD_HEIGHT = 260;
   const GRID_HEIGHT = 600;
 
+  // ✅ UPDATED: IndexedDB + API fallback
   useEffect(() => {
-    fetch("https://picsum.photos/v2/list?page=1&limit=100")
-      .then((res) => res.json())
-      .then((data) => {
-        setImages(data);
-      });
+    const loadImages = async () => {
+      try {
+        const cached = await getImages();
+
+        if (cached && cached.length > 0) {
+          console.log("Loaded from IndexedDB");
+          setImages(cached);
+          setSource("cache");
+        } else {
+          console.log("Fetching from API");
+
+          const res = await fetch("https://picsum.photos/v2/list?page=1&limit=100");
+          const data = await res.json();
+
+          setImages(data);
+          setSource("network");
+
+          await saveImages(data);
+        }
+      } catch (error) {
+        console.error("Error loading images:", error);
+      }
+    };
+
+    loadImages();
   }, []);
 
+  // Resize observer (unchanged)
   useEffect(() => {
     if (!gridContainerRef.current) return;
 
@@ -48,14 +75,17 @@ export default function Gallery() {
   };
 
   const toggleSelectAll = () => {
-    setSelected((prev) => (prev.length === images.length ? [] : images.map((img) => img.id)));
+    setSelected((prev) =>
+      prev.length === images.length ? [] : images.map((img) => img.id)
+    );
   };
 
   const downloadWithWorker = (url, fileName) => {
     return new Promise((resolve, reject) => {
-      const worker = new Worker(new URL("../worker/imageWorker.js", import.meta.url), {
-        type: "module",
-      });
+      const worker = new Worker(
+        new URL("../worker/imageWorker.js", import.meta.url),
+        { type: "module" }
+      );
 
       worker.onmessage = (event) => {
         const objectUrl = event.data;
@@ -77,16 +107,23 @@ export default function Gallery() {
     });
   };
 
-  const handleSingleDownload = (img) => downloadWithWorker(img.download_url, `image-${img.id}.png`);
+  const handleSingleDownload = (img) =>
+    downloadWithWorker(img.download_url, `image-${img.id}.png`);
 
   const handleDownloadSelected = async () => {
-    const selectedImages = images.filter((img) => selected.includes(img.id));
+    const selectedImages = images.filter((img) =>
+      selected.includes(img.id)
+    );
+
     if (selectedImages.length === 0) return;
 
     setIsDownloadingSelected(true);
     try {
       for (const img of selectedImages) {
-        await downloadWithWorker(img.download_url, `image-${img.id}.png`);
+        await downloadWithWorker(
+          img.download_url,
+          `image-${img.id}.png`
+        );
       }
     } finally {
       setIsDownloadingSelected(false);
@@ -115,16 +152,29 @@ export default function Gallery() {
   return (
     <div className="p-4">
 
+      {/* ✅ NEW: Cache Indicator */}
+      <p className="text-center mb-2 font-medium">
+        Data Source:{" "}
+        {source === "cache" ? "🟢 IndexedDB Cache" : "🔵 Network"}
+      </p>
+
       <h1 className="text-2xl font-bold mb-4 text-center">
         Image Gallery
       </h1>
 
       <label className="mb-4 flex items-center gap-2">
-        <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
+        <input
+          type="checkbox"
+          checked={allSelected}
+          onChange={toggleSelectAll}
+        />
         Select All
       </label>
 
-      <div ref={gridContainerRef} className="border rounded overflow-hidden w-full">
+      <div
+        ref={gridContainerRef}
+        className="border rounded overflow-hidden w-full"
+      >
         {gridWidth > 0 && (
           <Grid
             columnCount={COLUMN_COUNT}
@@ -152,11 +202,12 @@ export default function Gallery() {
             disabled={isDownloadingSelected}
             className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-60"
           >
-            {isDownloadingSelected ? "Downloading..." : "Download Selected"}
+            {isDownloadingSelected
+              ? "Downloading..."
+              : "Download Selected"}
           </button>
         </div>
       )}
-
     </div>
   );
 }

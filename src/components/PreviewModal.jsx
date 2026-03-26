@@ -1,4 +1,24 @@
+import { useEffect, useState } from "react";
+import { getPreview, setPreview } from "../utils/previewImageCache";
+
 export default function PreviewModal({ image, onClose }) {
+  const [src, setSrc] = useState("");
+
+  useEffect(() => {
+    if (!image) return;
+
+    // ✅ Check cache first
+    const cached = getPreview(image.id);
+
+    if (cached) {
+      setSrc(cached); // load from cache
+    } else {
+      // ✅ Not cached → use original and store it
+      setSrc(image.download_url);
+      setPreview(image.id, image.download_url);
+    }
+  }, [image]);
+
   if (!image) return null;
 
   return (
@@ -7,9 +27,9 @@ export default function PreviewModal({ image, onClose }) {
       onClick={onClose}
     >
       <img
-        src={image.download_url}
+        src={src}
         alt="Preview"
-        className="max-h-[90%]"
+        className="max-h-[90%] rounded shadow-lg"
         onClick={(e) => e.stopPropagation()}
       />
     </div>
