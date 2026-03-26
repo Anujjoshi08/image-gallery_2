@@ -152,12 +152,6 @@ export default function Gallery() {
   return (
     <div className="p-4">
 
-      {/* ✅ NEW: Cache Indicator */}
-      <p className="text-center mb-2 font-medium">
-        Data Source:{" "}
-        {source === "cache" ? "🟢 IndexedDB Cache" : "🔵 Network"}
-      </p>
-
       <h1 className="text-2xl font-bold mb-4 text-center">
         Image Gallery
       </h1>
