@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FixedSizeGrid as Grid } from "react-window";
 import PreviewModal from "./PreviewModal";
 import ImageCard from "./ImageCard";
-import { getImages, saveImages } from "../utils/indexedDB"; // ✅ NEW
+import { getImages, saveImages } from "../utils/indexedDB"; 
 
 export default function Gallery() {
 
@@ -12,7 +12,7 @@ export default function Gallery() {
   const [isDownloadingSelected, setIsDownloadingSelected] = useState(false);
   const [gridWidth, setGridWidth] = useState(0);
 
-  const [source, setSource] = useState("network"); // ✅ NEW (cache indicator)
+  const [source, setSource] = useState("network"); 
 
   const gridContainerRef = useRef(null);
 

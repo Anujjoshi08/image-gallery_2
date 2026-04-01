@@ -2,9 +2,7 @@ const DB_NAME = "ImageGalleryDB";
 const STORE_NAME = "images";
 const DB_VERSION = 1;
 
-/**
- * Open (or create) IndexedDB
- */
+
 export function openDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
